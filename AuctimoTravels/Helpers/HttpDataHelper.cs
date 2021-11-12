@@ -13,42 +13,62 @@ namespace AuctimoTravels.Helpers
     public class HttpDataHelper
     {
         private HttpClient Client { get; set; }
-        public HttpDataHelper(string baseAddress, string authToken, List<(string key, string value)> headers)
+
+        /// <summary>
+        ///     Initializes a new instance of the <see cref="HttpDataHelper"/> class
+        /// </summary>
+        /// <param name="baseAddress">Base url to te endpoint</param>
+        /// <param name="accessToken">Bearer token for authentication</param>
+        /// <param name="headers">Headers for the request as a tuple</param>
+        public HttpDataHelper(string baseAddress, string accessToken, List<(string name, string value)> headers)
         {
-            Client = new HttpClient();
+            // initialise http client
+           Client = new HttpClient();
+
+            // set the base address
             Client.BaseAddress = new Uri(baseAddress);
 
-            Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", authToken);
+            // add the access token for authentication
+            Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
 
-            foreach (var (key, value) in headers)
+            //add the request headers
+            foreach (var (name, value) in headers)
             {
-                Client.DefaultRequestHeaders.Add(key, value);
+                Client.DefaultRequestHeaders.Add(name, value);
             }
         }
 
-        public async Task<ResponseMessage> GetItem<T>(string endpoint)
+        /// <summary>
+        ///     A get request to fetch items from a specified endpoint
+        /// </summary>
+        /// <param name="endpoint"></param>
+        /// <returns></returns>
+        public async Task<ResponseMessage> GetItemsAsync(string endpoint)
         {
             var response = await Client.GetAsync(endpoint);
+            var responseString = await response.Content.ReadAsStringAsync();
+            var returnObj = JsonConvert.DeserializeObject(responseString);
 
-            if (!response.IsSuccessStatusCode) 
-                return default;
-
-            var returnContent = await response.Content.ReadAsStringAsync();
-            return new ResponseMessage(returnContent, response.StatusCode, response.IsSuccessStatusCode);
+            return new ResponseMessage(response.IsSuccessStatusCode, response.StatusCode, returnObj);
         }
 
-        public async Task<ResponseMessage> PostItem<T>(T item, string endpoint)
+        /// <summary>
+        ///     A post request to a specified endpoint.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="endpoint"></param>
+        /// <param name="item"></param>
+        /// <returns></returns>
+        public async Task<ResponseMessage> PostItemAsync<T>(string endpoint, T item)
         {
-            var serializedItem = JsonConvert.SerializeObject(item);
-            var content = new StringContent(serializedItem, Encoding.UTF8, "application/json");
-
+            var stringItem = JsonConvert.SerializeObject(item);
+            var content = new StringContent(stringItem, Encoding.UTF8, "application/json");
             var response = await Client.PostAsync(endpoint, content);
 
-            var returnContent = JsonConvert.DeserializeObject(await response.Content.ReadAsStringAsync());
-            return new ResponseMessage(returnContent, response.StatusCode, response.IsSuccessStatusCode);
+            var responseString = await response.Content.ReadAsStringAsync();
+            var returnObj = JsonConvert.DeserializeObject(responseString);
 
+            return new ResponseMessage(response.IsSuccessStatusCode, response.StatusCode, returnObj);
         }
-
-
     }
 }
